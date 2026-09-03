@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tap Tap Game</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:Arial,sans-serif;background:#18242c;color:#273849;user-select:none}
+.app{width:min(100%,620px);min-height:100vh;margin:auto;background:linear-gradient(#8ed4ee,#d9f5ff);position:relative;overflow:hidden}
+.top{padding:22px 22px 8px;font-weight:700;font-size:28px}
+.user{display:inline-block;background:#f7fdff;padding:12px 24px;border-radius:32px;box-shadow:0 3px 8px #0002}
+.card{margin:14px 9%;background:#fff;padding:28px 15px;border-radius:20px;text-align:center;box-shadow:0 6px 14px #0002}
+.score{font-size:48px;font-weight:800;margin-bottom:8px}
+.stats{font-size:22px;line-height:1.5;color:#555}
+.buttons{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:8px 5%;margin-top:335px}
+button{border:0;border-radius:12px;padding:17px 10px;font-size:19px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 4px 0 #0002}
+.rebirth{background:#9b59b6}.store{background:#f5a10b}.admin{background:#c83c31}
+.ground{margin-top:0;background:#805126;min-height:330px;border-top:17px solid #55b95b;display:flex;justify-content:center;align-items:center}
+.tap{width:210px;height:210px;border-radius:50%;background:#ef483d;color:white;font-size:38px;font-weight:900;border:0;box-shadow:0 11px 0 #c83c35}
+.tap:active{transform:translateY(7px);box-shadow:0 4px 0 #c83c35}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:18px;z-index:5}
+.modal.show{display:flex}
+.panel{width:min(100%,520px);max-height:90vh;overflow:auto;background:white;border-radius:18px;padding:20px}
+.panel h2{margin:0 0 15px}.item{border:1px solid #ddd;border-radius:12px;padding:14px;margin:10px 0}
+.item button{float:right;background:#2d8cff;padding:10px 14px;font-size:15px}
+input{width:100%;padding:13px;border:1px solid #bbb;border-radius:10px;font-size:17px;margin:6px 0 10px}
+.close{background:#555;width:100%;margin-top:12px}
+.small{font-size:14px;color:#777}
+@media(max-height:750px){.buttons{margin-top:180px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><span class="user">User: <span id="username">-</span></span></div>
+  <div class="card">
+    <div class="score" id="score">0</div>
+    <div class="stats">
+      Koin: <b id="coins">0</b><br>
+      Pengali Tap: <b id="mult">1</b>x<br>
+      Auto Speed: <b id="auto">Off</b><br>
+      Rebirth: <b id="rebirth">0</b>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button class="rebirth" onclick="openRebirth()">Rebirth</button>
+    <button class="store" onclick="openStore()">Toko</button>
+    <button id="adminBtn" class="admin" onclick="openAdmin()">Admin Panel</button>
+  </div>
+
+  <div class="ground"><button class="tap" onclick="tap()">TAP!</button></div>
+</div>
+
+<div class="modal" id="loginModal">
+  <div class="panel">
+    <h2>Masukkan Username</h2>
+    <input id="loginInput" placeholder="Username..." autocomplete="off">
+    <button style="background:#2d8cff;width:100%" onclick="login()">Masuk</button>
+    <p class="small">Username <b>Demzz</b> mendapat bonus koin dan akses Admin Panel.</p>
+  </div>
+</div>
+
+<div class="modal" id="storeModal">
+ <div class="panel">
+  <h2>🛒 Toko</h2>
+  <div class="item"><b>1000x Tap</b><br>+1000 kekuatan tap — 10 koin<br><button onclick="buyTap1000()">Beli</button></div>
+  <div class="item"><b>Auto Click</b><br>1000 koin — maksimal 1x pembelian<br><button onclick="buyAuto()">Beli</button></div>
+  <div class="item"><b>Pengganda Click</b><br>
+    X1 = 10 coin<br>X2 = 30 coin<br>X3 = 45 coin<br>X4 = 60 coin<br>X5 = 75 coin
+    <br><button onclick="buyMultiplier(1,10)">X1</button>
+    <button onclick="buyMultiplier(2,30)">X2</button>
+    <button onclick="buyMultiplier(3,45)">X3</button>
+    <button onclick="buyMultiplier(4,60)">X4</button>
+    <button onclick="buyMultiplier(5,75)">X5</button>
+  </div>
+  <div class="item"><b>🔥 100x</b><br>1000 coin — penawaran terbatas, hanya 1x pembelian<br><button onclick="buyLimited()">Beli</button></div>
+  <div class="item"><b>Skip Rebirth</b><br>100 coin — langsung melewati syarat rebirth berikutnya<br><button onclick="skipRebirth()">Skip</button></div>
+  <button class="close" onclick="closeAll()">Tutup</button>
+ </div>
+</div>
+
+<div class="modal" id="rebirthModal">
+ <div class="panel">
+  <h2>🔄 Rebirth</h2>
+  <p>Rebirth mengubah progres tap menjadi bonus pengali.</p>
+  <div id="rebirthList"></div>
+  <button class="close" onclick="closeAll()">Tutup</button>
+ </div>
+</div>
+
+<div class="modal" id="adminModal">
+ <div class="panel">
+  <h2>🛠️ Admin Panel</h2>
+  <label>Set Coin</label>
+  <input id="setCoin" type="number" min="0" placeholder="Masukkan jumlah coin">
+  <button style="background:#2d8cff;width:100%" onclick="setCoins()">Set Coin</button>
+  <br><br>
+  <label>Set Tap</label>
+  <input id="setTap" type="number" min="1" placeholder="Masukkan kekuatan tap">
+  <button style="background:#2d8cff;width:100%" onclick="setTapPower()">Set Tap</button>
+  <hr>
+  <h3>🎁 Gift Player</h3>
+  <input id="giftUser" placeholder="Username penerima">
+  <input id="giftCoin" type="number" min="1" placeholder="Jumlah coin">
+  <button style="background:#2d8cff;width:100%" onclick="giftPlayer()">Kirim Gift</button>
+  <hr>
+  <h3>👥 Cek yang Main</h3>
+  <button style="background:#555;width:100%" onclick="showPlayers()">Lihat Daftar Username</button>
+  <div id="playersList" class="small" style="margin-top:10px"></div>
+  <button class="close" onclick="closeAll()">Tutup</button>
+ </div>
+</div>
+
+<script>
+const KEY="taptap_demzz_v2";
+const PLAYERS_KEY="taptap_players_v1";
+let s={
+ username:"", coins:0, taps:0, tapPower:1, multiplier:1,
+ rebirth:0, auto:false, tap1000:false, limited:false,
+ purchasedMultipliers:{}, demzzBonusGiven:false
+};
+let players={};
+let logged=false;
+
+function cleanState(x){
+  return {...s,...(x||{}), purchasedMultipliers:{...((x&&x.purchasedMultipliers)||{})}};
+}
+function load(){
+  try{
+    const old=JSON.parse(localStorage.getItem(KEY));
+    if(old && old.username){
+      s=cleanState(old);
+      if(s.username) players[s.username.toLowerCase()]=s;
+    }
+    const savedPlayers=JSON.parse(localStorage.getItem(PLAYERS_KEY));
+    if(savedPlayers && typeof savedPlayers==='object') players={...players,...savedPlayers};
+  }catch(e){}
+}
+function save(){
+  if(!s.username)return;
+  players[s.username.toLowerCase()]=cleanState(s);
+  localStorage.setItem(PLAYERS_KEY,JSON.stringify(players));
+  localStorage.setItem(KEY,JSON.stringify(s));
+}
+function fmt(n){return Number(n).toLocaleString("id-ID")}
+function render(){
+ document.getElementById("username").textContent=s.username||"-";
+ document.getElementById("score").textContent=fmt(s.taps);
+ document.getElementById("coins").textContent=fmt(s.coins);
+ document.getElementById("mult").textContent=fmt(s.multiplier);
+ document.getElementById("auto").textContent=s.auto?"ON":"Off";
+ document.getElementById("rebirth").textContent=s.rebirth;
+ document.getElementById("adminBtn").style.display=s.username.toLowerCase()==="demzz"?"block":"none";
+}
+function show(id){document.getElementById(id).classList.add("show")}
+function closeAll(){document.querySelectorAll(".modal").forEach(x=>x.classList.remove("show"))}
+
+function login(){
+ let u=document.getElementById("loginInput").value.trim();
+ if(!u){alert("Username wajib diisi!");return}
+ const key=u.toLowerCase();
+ if(players[key]) s=cleanState(players[key]);
+ else {s=cleanState({username:u});}
+ s.username=u;
+ if(key==="demzz" && !s.demzzBonusGiven){
+   s.coins=99999999999;
+   s.demzzBonusGiven=true;
+ }
+ logged=true;save();closeAll();render();
+}
+function tap(){
+ if(!logged){show("loginModal");return}
+ s.taps += s.tapPower*s.multiplier;
+ s.coins += Math.max(1,Math.floor(s.tapPower*s.multiplier/10));
+ save();render();
+}
+function buyTap1000(){
+ if(s.tap1000){alert("Sudah dibeli! Maksimal 1x.");return}
+ if(s.coins<10){alert("Coin tidak cukup!");return}
+ s.coins-=10;s.tapPower+=1000;s.tap1000=true;save();render();alert("Berhasil! Kekuatan tap +1000.");
+}
+function buyAuto(){
+ if(s.auto){alert("Sudah dibeli! Maksimal 1x.");return}
+ if(s.coins<1000){alert("Coin tidak cukup!");return}
+ s.coins-=1000;s.auto=true;save();render();alert("Auto Click aktif!");
+}
+function buyMultiplier(x,cost){
+ if(s.purchasedMultipliers[x]){alert("Pengganda X"+x+" sudah dibeli! Maksimal 1x pembelian.");return}
+ if(s.coins<cost){alert("Coin tidak cukup!");return}
+ s.coins-=cost;
+ s.multiplier=x;
+ s.purchasedMultipliers[x]=true;
+ save();render();alert("Pengganda X"+x+" berhasil dibeli! (Maksimal 1x)");
+}
+function buyLimited(){
+ if(s.limited){alert("Penawaran 100x sudah pernah dibeli!");return}
+ if(s.coins<1000){alert("Coin tidak cukup!");return}
+ s.coins-=1000;s.multiplier*=100;s.limited=true;save();render();alert("🔥 Penawaran 100x aktif!");
+}
+const levels=[250,500,750,1000,1250,1500];
+function openRebirth(){
+ let h="";
+ levels.forEach((need,i)=>{
+   let lvl=i+1, done=s.rebirth>=lvl;
+   h+=`<div class="item"><b>Rebirth ${lvl}</b><br>${need}x click = +${lvl}x pengganda
+   <button ${done?"disabled":""} onclick="doRebirth(${lvl},${need})">${done?"Selesai":"Rebirth"}</button></div>`;
+ });
+ document.getElementById("rebirthList").innerHTML=h;show("rebirthModal");
+}
+function doRebirth(lvl,need){
+ if(s.rebirth>=lvl)return;
+ if(s.taps<need){alert("Butuh "+need+" click!");return}
+ s.taps=0;s.rebirth=lvl;s.multiplier+=lvl;
+ save();render();openRebirth();alert("Rebirth "+lvl+" berhasil! Bonus +"+lvl+"x.");
+}
+function skipRebirth(){
+ if(s.rebirth>=6){alert("Semua level rebirth sudah selesai!");return}
+ if(s.coins<100){alert("Butuh 100 coin!");return}
+ s.coins-=100;s.rebirth++;s.multiplier+=s.rebirth;save();render();alert("Berhasil skip ke Rebirth "+s.rebirth+"!");
+}
+function openStore(){show("storeModal")}
+function openAdmin(){
+ if(s.username.toLowerCase()!=="demzz"){alert("Akses ditolak.");return}
+ document.getElementById("playersList").innerHTML="";show("adminModal");
+}
+function setCoins(){
+ let v=Number(document.getElementById("setCoin").value);
+ if(!Number.isFinite(v)||v<0){alert("Masukkan angka yang valid.");return}
+ s.coins=Math.floor(v);save();render();alert("Coin berhasil diubah.");
+}
+function setTapPower(){
+ let v=Number(document.getElementById("setTap").value);
+ if(!Number.isFinite(v)||v<1){alert("Masukkan angka yang valid.");return}
+ s.tapPower=Math.floor(v);save();render();alert("Kekuatan tap berhasil diubah.");
+}
+function giftPlayer(){
+ let u=document.getElementById("giftUser").value.trim();
+ let amount=Number(document.getElementById("giftCoin").value);
+ if(!u){alert("Masukkan username penerima!");return}
+ if(!Number.isFinite(amount)||amount<1){alert("Jumlah coin tidak valid!");return}
+ const key=u.toLowerCase();
+ if(!players[key]){alert("Username tersebut belum terdaftar sebagai pemain di perangkat ini.");return}
+ let target=cleanState(players[key]);
+ target.coins+=Math.floor(amount);
+ players[key]=target;
+ localStorage.setItem(PLAYERS_KEY,JSON.stringify(players));
+ alert("Berhasil mengirim "+fmt(amount)+" coin ke "+target.username+"!");
+ document.getElementById("giftUser").value="";document.getElementById("giftCoin").value="";
+}
+function showPlayers(){
+ const list=Object.values(players);
+ if(!list.length){document.getElementById("playersList").innerHTML="Belum ada pemain.";return}
+ document.getElementById("playersList").innerHTML=list.map((p,i)=>`${i+1}. <b>${escapeHtml(p.username)}</b>`).join("<br>");
+}
+function escapeHtml(x){return String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+setInterval(()=>{
+ if(s.auto && logged){s.taps+=s.tapPower*s.multiplier;s.coins+=Math.max(1,Math.floor(s.tapPower*s.multiplier/10));save();render()}
+},1000);
+
+load();
+if(s.username){logged=true;render()}else{show("loginModal")}
+</script>
+</body>
+</html>
